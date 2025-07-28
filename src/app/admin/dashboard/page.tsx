@@ -8,7 +8,7 @@ import { Users, CheckCircle, BarChart } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
-// A small, local component for the stat cards
+// A small, local component for displaying stat cards
 function StatCard({ title, value, icon: Icon }: { title: string; value: number | string; icon: React.ElementType }) {
   return (
     <div className="bg-white p-6 rounded-lg shadow-md flex items-center gap-4">
@@ -28,7 +28,7 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState({ total: 0, active: 0, graduated: 0 });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetches the summary stats from our enhanced API
+  // This function now calls our dedicated stats endpoint from the API
   const fetchStats = useCallback(async () => {
     if (session?.user?.accessToken) {
       try {
@@ -51,10 +51,10 @@ export default function AdminDashboardPage() {
     <div>
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
 
-      {/* --- Dashboard Stats (Bonus Feature) --- */}
+      {/* --- Dashboard Stats Cards --- */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {isLoading ? (
-          // A simple skeleton loader for the cards
+          // Simple loading state for the cards
           Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="bg-white p-6 rounded-lg shadow-md h-[92px] animate-pulse"></div>
           ))
@@ -67,6 +67,7 @@ export default function AdminDashboardPage() {
         )}
       </div>
 
+      {/* --- Quick Actions Section --- */}
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-4">Student Management</h2>
         <p className="text-gray-600 mb-4">
