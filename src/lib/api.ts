@@ -1,190 +1,122 @@
 import { AuthResponse, StudentRecord, UserProfile } from "@/types";
 
-// Simulate network delay for realism
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// This variable points to your live backend server, defined in .env.local.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-// ==============================
-// === MOCKED DATABASE (SOURCE OF TRUTH)
-// ==============================
+/**
+ * A helper function for making authenticated API requests to the real backend.
+ */
+async function fetchWithAuth(url: string, token: string, options: RequestInit = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+    'Authorization': `Bearer ${token}`,
+  };
 
-let mockUsersDb: UserProfile[] = [
-  { id: 'admin-01', name: 'Admin User', email: 'admin@test.com', role: 'admin', phone: '123-456-7890' },
-  { id: 'student-01', name: 'Student User', email: 'student@test.com', role: 'student', phone: '098-765-4321', course: 'Computer Science', enrollmentYear: 2022 },
-  { id: 's1', name: 'Alice Johnson', email: 'alice@test.com', role: 'student', phone: '111-222-3333', course: 'Web Development', enrollmentYear: 2023 },
-  { id: 's2', name: 'Bob Williams', email: 'bob@test.com', role: 'student', phone: '444-555-6666', course: 'Data Science', enrollmentYear: 2022 },
-  { id: 's3', name: 'Charlie Brown', email: 'charlie@test.com', role: 'student', phone: '777-888-9999', course: 'UX/UI Design', enrollmentYear: 2023 },
-  { id: 's4', name: 'Diana Prince', email: 'diana@test.com', role: 'student', phone: '121-232-3434', course: 'Data Science', enrollmentYear: 2024 },
-];
+  const response = await fetch(`${API_BASE_URL}${url}`, { ...options, headers });
 
-// ==============================
-// === UTILITY FUNCTION: StudentRecord Mapping
-// ==============================
-
-const getStudentRecords = (): StudentRecord[] => {
-  return mockUsersDb
-    .filter(user => user.role === 'student')
-    .map(user => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      course: user.course || 'N/A',
-      enrollmentYear: user.enrollmentYear || 0,
-      status: (user.enrollmentYear && user.enrollmentYear < 2023) ? 'Graduated' : 'Active',
-    }));
-};
-
-// ==============================
-// === AUTHENTICATION
-// ==============================
-
-export const loginUser = async (email: string, password: string): Promise<AuthResponse> => {
-  await delay(500);
-  const user = mockUsersDb.find(u => u.email === email);
-  if (user && ((user.role === 'admin' && password === 'admin123') || (user.role === 'student' && password === 'student123'))) {
-    return { user, token: `mock-jwt-for-${user.id}` };
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ message: 'An API error occurred' }));
+    throw new Error(errorData.message);
   }
-  throw new Error('Invalid credentials. Use admin@test.com or student@test.com');
+  if (response.status === 204) return; // Handle successful DELETE requests
+  return response.json();
+}
+
+// ==============================
+// === REAL API FUNCTIONS ===
+// ==============================
+
+// --- Authentication ---
+export const loginUser = async (email: string, password: string): Promise<AuthResponse> => {
+  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Invalid credentials');
+  }
+  return response.json();
 };
 
 export const registerUser = async (userData: Partial<UserProfile>): Promise<UserProfile> => {
-  await delay(500);
-  if (mockUsersDb.some(user => user.email === userData.email)) {
-    throw new Error('An account with this email already exists.');
+  const response = await fetch(`${API_BASE_URL}/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData),
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Registration failed');
   }
-  const newUser: UserProfile = {
-    id: `user-${Date.now()}`,
-    name: userData.name || 'New User',
-    email: userData.email || 'new@test.com',
-    role: 'student',
-    phone: userData.phone,
-    course: userData.course,
-    enrollmentYear: userData.enrollmentYear,
-  };
-  mockUsersDb.push(newUser);
-  return newUser;
+  return response.json();
 };
 
-// ==============================
-// === STUDENT MANAGEMENT (ADMIN)
-// ==============================
+// --- Student Management (Admin) ---
 
+// Define the options interface for type safety
 interface GetAllStudentsOptions {
   page?: number;
   limit?: number;
   statusFilter?: 'All' | 'Active' | 'Graduated' | 'Dropped';
 }
 
+/**
+ * Fetches students from the backend, passing pagination and filtering options as URL query parameters.
+ */
 export const getAllStudents = async (
   token: string,
   options: GetAllStudentsOptions = {}
 ): Promise<{ students: StudentRecord[]; total: number }> => {
-  await delay(800);
-  if (!token.includes('admin')) throw new Error("Unauthorized access");
-
   const { page = 1, limit = 5, statusFilter = 'All' } = options;
-  let allStudents = getStudentRecords();
+  
+  // Construct the URL with query parameters for the backend to read
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+    statusFilter: statusFilter,
+  });
 
-  if (statusFilter !== 'All') {
-    allStudents = allStudents.filter(s => s.status === statusFilter);
-  }
-
-  const total = allStudents.length;
-  const paginatedStudents = allStudents.slice((page - 1) * limit, page * limit);
-  return { students: paginatedStudents, total };
+  // The final URL will look like: /api/students?page=1&limit=5&statusFilter=Active
+  return fetchWithAuth(`/students?${queryParams.toString()}`, token);
 };
 
-export const createStudent = async (
-  studentData: Omit<StudentRecord, 'id'>,
-  token: string
-): Promise<UserProfile> => {
-  await delay(500);
-  if (!token.includes('admin')) throw new Error("Unauthorized access");
-  if (mockUsersDb.some(user => user.email === studentData.email)) {
-    throw new Error('A student with this email already exists.');
-  }
-
-  const newUser: UserProfile = {
-    id: `user-${Date.now()}`,
-    name: studentData.name,
-    email: studentData.email,
-    role: 'student',
-    course: studentData.course,
-    enrollmentYear: studentData.enrollmentYear,
-  };
-  mockUsersDb.push(newUser);
-  return newUser;
+export const createStudent = (studentData: Omit<StudentRecord, 'id'>, token: string): Promise<UserProfile> => {
+  return fetchWithAuth('/students', token, { method: 'POST', body: JSON.stringify(studentData) });
 };
 
-export const updateStudent = async (
-  id: string,
-  studentData: Partial<StudentRecord>,
-  token: string
-): Promise<UserProfile> => {
-  await delay(500);
-  if (!token.includes('admin')) throw new Error("Unauthorized access");
-
-  const userIndex = mockUsersDb.findIndex(u => u.id === id);
-  if (userIndex === -1) throw new Error("User not found for update");
-
-  Object.assign(mockUsersDb[userIndex], studentData);
-  return mockUsersDb[userIndex];
+export const updateStudent = (id: string, studentData: Partial<StudentRecord>, token: string): Promise<UserProfile> => {
+  return fetchWithAuth(`/students/${id}`, token, { method: 'PUT', body: JSON.stringify(studentData) });
 };
 
-export const deleteStudent = async (id: string, token: string): Promise<void> => {
-  await delay(500);
-  if (!token.includes('admin')) throw new Error("Unauthorized access");
-  mockUsersDb = mockUsersDb.filter(u => u.id !== id);
+export const deleteStudent = (id: string, token: string): Promise<void> => {
+  return fetchWithAuth(`/students/${id}`, token, { method: 'DELETE' });
 };
 
-export const changeUserRole = async (
-  userId: string,
-  newRole: 'admin' | 'student',
-  token: string
-): Promise<UserProfile> => {
-  await delay(500);
-  if (!token.includes('admin')) throw new Error("Unauthorized access");
-
-  const userIndex = mockUsersDb.findIndex(u => u.id === userId);
-  if (userIndex === -1) throw new Error("User not found for role change");
-
-  mockUsersDb[userIndex].role = newRole;
-  return mockUsersDb[userIndex];
+export const changeUserRole = (userId: string, newRole: 'admin' | 'student', token: string): Promise<UserProfile> => {
+  // NOTE: We haven't built this specific endpoint in the backend yet.
+  // This is how you WOULD call it. It will currently return a 404 Not Found error.
+  return fetchWithAuth(`/users/${userId}/role`, token, { method: 'PUT', body: JSON.stringify({ role: newRole }) });
 };
 
-// ==============================
-// === USER PROFILE & DASHBOARD
-// ==============================
-
-export const getAdminDashboardStats = async (
-  token: string
-): Promise<{ total: number; active: number; graduated: number }> => {
-  await delay(400);
-  if (!token.includes('admin')) throw new Error("Unauthorized access");
-
-  const allStudents = getStudentRecords();
-  return {
-    total: allStudents.length,
-    active: allStudents.filter(s => s.status === 'Active').length,
-    graduated: allStudents.filter(s => s.status === 'Graduated').length,
-  };
+// --- User Profile (Student & Admin) ---
+export const getMyProfile = (token: string): Promise<UserProfile> => {
+  return fetchWithAuth('/users/me', token);
 };
 
-export const getMyProfile = async (token: string): Promise<UserProfile> => {
-  await delay(300);
-  const userId = token.replace('mock-jwt-for-', '');
-  const user = mockUsersDb.find(u => u.id === userId);
-  if (!user) throw new Error("Invalid session token.");
-  return { ...user };
+export const updateMyProfile = (profileData: Partial<UserProfile>, token: string): Promise<UserProfile> => {
+  return fetchWithAuth('/users/me', token, { method: 'PUT', body: JSON.stringify(profileData) });
 };
 
-export const updateMyProfile = async (
-  profileData: Partial<UserProfile>,
-  token: string
-): Promise<UserProfile> => {
-  await delay(500);
-  const userId = token.replace('mock-jwt-for-', '');
-  const userIndex = mockUsersDb.findIndex(u => u.id === userId);
-  if (userIndex === -1) throw new Error("User not found to update profile.");
-  Object.assign(mockUsersDb[userIndex], profileData);
-  return { ...mockUsersDb[userIndex] };
+// This function needs a dedicated backend endpoint to be fully implemented.
+export const getAdminDashboardStats = async (token: string): Promise<{total: number, active: number, graduated: number}> => {
+  console.warn("getAdminDashboardStats is not implemented on the backend yet. Returning mock data.");
+  // For now, we can make a simple call to get all students and calculate stats on the frontend
+  // to avoid breaking the UI. This is a temporary solution.
+  const allStudents = await fetchWithAuth('/students', token);
+  const active = allStudents.filter((s: StudentRecord) => s.status === 'Active').length;
+  const graduated = allStudents.filter((s: StudentRecord) => s.status === 'Graduated').length;
+  return { total: allStudents.length, active, graduated };
 };

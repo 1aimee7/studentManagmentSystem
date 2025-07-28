@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mini Student Management System
+
+This is a full-stack web application built to simulate a real-world student information system. It features user authentication, role-based access control, profile management, and complete CRUD operations for student records.
+
+**Live Demo:** [Link to your deployed Vercel site]
+
+---
+
+## Features
+
+### Core Functionality
+- **User Authentication:** Secure user registration and JWT-based login for both students and admins.
+- **Role-Based Access Control:** The application has two distinct roles:
+  - **Student:** Can view and update their own profile information.
+  - **Admin:** Has full access to manage all student data.
+- **Profile Management:** Users can update their personal and course-related information, which is persisted in the database.
+- **Student Management (Admin):** Admins can perform full CRUD operations on student records:
+  - **Create:** Add new students to the system.
+  - **Read:** View a paginated and filterable list of all students.
+  - **Update:** Edit any student's information.
+  - **Delete:** Remove a student from the system.
+
+### Bonus Features Implemented
+- **Admin Dashboard:** A summary view for admins showing key statistics like total student count, active students, etc.
+- **Pagination & Filtering:** The admin's student list is paginated and can be filtered by status (Active/Graduated) for a better user experience.
+- **Real-time Feedback:** The UI provides instant feedback for all actions using toast notifications.
+
+---
+
+## Tech Stack
+
+- **Frontend:** Next.js, React, TypeScript, Tailwind CSS
+- **Backend:** Node.js, Express.js
+- **Database:** MongoDB Atlas
+- **Authentication:** NextAuth.js (client-side), JWT & bcryptjs (server-side)
+- **Deployment:** Frontend on Vercel, Backend on Render (or similar).
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js (v18 or later)
+- npm
+- A MongoDB Atlas account
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+### 1. Frontend Setup
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+1.  Navigate to the root project directory.
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Create a `.env.local` file in the root and add the following variables:
+    ```
+    # A generated secret for NextAuth.js
+    NEXTAUTH_SECRET=your_nextauth_secret_here
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+    # The URL of your running backend server
+    NEXT_PUBLIC_API_URL=http://localhost:5000/api
+    ```
+4.  Run the development server:
+    ```bash
+    npm run dev
+    ```
+    The frontend will be available at `http://localhost:3000`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 2. Backend Setup
 
-## Learn More
+1.  Navigate to the `/server` directory.
+2.  Install dependencies:
+    ```bash
+    npm install
+    ```
+3.  Create a `.env` file in the `/server` directory and add the following variables:
+    ```
+    # Your MongoDB Atlas connection string
+    MONGODB_URI=your_mongodb_connection_string_here
 
-To learn more about Next.js, take a look at the following resources:
+    # A generated secret for signing JWTs
+    JWT_SECRET=your_jwt_secret_here
+    ```
+4.  (Optional but Recommended) Seed the database with a default admin user:
+    ```bash
+    npm run seed
+    ```
+5.  Run the development server:
+    ```bash
+    npm run dev
+    ```
+    The backend API will be available at `http://localhost:5000`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Login Credentials for Testing
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+-   **Admin:**
+    -   Email: `admin@test.com`
+    -   Password: `admin123`
+-   **Student:**
+    -   Register a new user through the UI.
