@@ -1,12 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const { getMyProfile, updateMyProfile } = require('../controllers/userController');
-const { protect } = require('../middleware/authMiddleware'); // Import only the 'protect' middleware
 
-// Apply the 'protect' middleware to both routes in this file.
-// This ensures that a user MUST be logged in to access their profile.
+// --- THIS IS THE FIX ---
+// We need to import the entire controller object and then access its properties.
+const userController = require('../controllers/userController');
+// --- END OF FIX ---
+
+const { protect } = require('../middleware/authMiddleware');
+
+// These routes are for ANY logged-in user, so we only need the 'protect' middleware.
+// We use userController.getMyProfile and userController.updateMyProfile.
 router.route('/me')
-  .get(protect, getMyProfile)     // GET /api/users/me
-  .put(protect, updateMyProfile);    // PUT /api/users/me
+  .get(protect, userController.getMyProfile)
+  .put(protect, userController.updateMyProfile);
 
 module.exports = router;

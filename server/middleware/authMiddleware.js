@@ -1,46 +1,46 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// This middleware will protect routes
+// Middleware to protect routes that require a user to be logged in
 exports.protect = async (req, res, next) => {
   let token;
 
-  // 1. Check if the request has an Authorization header, and if it starts with 'Bearer'
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
-      // 2. Get the token from the header (e.g., "Bearer eyJhbGci...")
+      // 1. Get token from header (e.g., "Bearer eyJhbGci...")
       token = req.headers.authorization.split(' ')[1];
 
-      // 3. Verify the token using our JWT_SECRET
+      // 2. Verify the token is valid using our secret
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // 4. Find the user from the database using the ID from the token
-      // We attach the user to the request object so our controllers can use it
+      // 3. Find the user in the database using the ID from the token
+      // We attach the full user object (minus password) to the request
       req.user = await User.findById(decoded.id).select('-password');
       
-      // If user is not found
       if (!req.user) {
-          return res.status(401).json({ message: 'User not found' });
+          return res.status(401).json({ message: 'Not authorized, user not found' });
       }
 
-      // 5. Continue to the next step (either another middleware or the controller)
+      // 4. If all is good, proceed to the next function (e.g., the controller)
       next();
     } catch (error) {
-      res.status(401).json({ message: 'Not authorized, token failed' });
+      console.error('TOKEN VERIFICATION ERROR:', error);
+      return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   }
 
   if (!token) {
-    res.status(401).json({ message: 'Not authorized, no token' });
+    return res.status(401).json({ message: 'Not authorized, no token' });
   }
 };
 
-// This middleware will check for a specific role
+// Middleware to check if the logged-in user is an admin
 exports.isAdmin = (req, res, next) => {
-  // We assume the 'protect' middleware has already run and attached `req.user`
+  // This runs AFTER `protect`, so `req.user` is available
   if (req.user && req.user.role === 'admin') {
     next();
   } else {
-    res.status(403).json({ message: 'Not authorized as an admin' }); // 403 Forbidden
+    // 403 Forbidden is the correct status code for a role mismatch
+    res.status(403).json({ message: 'Not authorized as an admin' });
   }
 };
