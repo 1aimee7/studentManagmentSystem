@@ -1,19 +1,42 @@
 const express = require('express');
 const router = express.Router();
 
-// --- THIS IS THE FIX ---
-// Import the entire controller object. This is a safer way to import
-// and avoids errors from typos in destructuring assignments.
-const userController = require('../controllers/userController');
+// --- Import Controller Functions ---
+// We import all the functions exported from the userController file.
+const {
+  getMyProfile,
+  updateMyProfile,
+  updateUserRole,
+} = require('../controllers/userController');
 
-// Import the security middleware that checks if a user is logged in.
-const { protect } = require('../middleware/authMiddleware');
+// --- Import Security Middleware ---
+// `protect` checks for a valid JWT to see if the user is logged in.
+// `isAdmin` checks if the logged-in user has the 'admin' role.
+const { protect, isAdmin } = require('../middleware/authMiddleware');
 
-// Define the routes for the '/me' endpoint (full path: /api/users/me).
-// A request must pass the `protect` middleware before it can reach the controller functions.
+
+// ==============================
+// === ROUTE DEFINITIONS ===
+// ==============================
+
+// --- Routes for a user's OWN profile ---
+// These routes handle actions for the currently authenticated user.
+// The full path is `/api/users/me`.
 router.route('/me')
-  .get(protect, userController.getMyProfile)    // For GET requests, use the getMyProfile function
-  .put(protect, userController.updateMyProfile);   // For PUT requests, use the updateMyProfile function
+  .get(protect, getMyProfile)     // GET: Fetches the logged-in user's profile. Requires login.
+  .put(protect, updateMyProfile);    // PUT: Updates the logged-in user's profile. Requires login.
 
-// Export the router so it can be used in server.js
+
+// --- Route for an ADMIN to manage user roles ---
+// This route is for a privileged administrative action.
+// The full path is `/api/users/:id/role`.
+router.put(
+  '/:id/role',      // The ':id' is a URL parameter for the user being changed.
+  protect,          // 1. First, check if the person making the request is logged in.
+  isAdmin,          // 2. Second, check if that logged-in person is an admin.
+  updateUserRole    // 3. If both checks pass, execute the controller function.
+);
+
+
+// Export the configured router to be used in server.js
 module.exports = router;

@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { BookOpen, Users, BarChart3, Shield, CheckCircle, Star } from 'lucide-react';
 
 export default function HomePage() {
@@ -16,12 +17,16 @@ export default function HomePage() {
             The all-in-one solution for managing student data efficiently.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
-              Get Started
-            </button>
-            <button className="px-8 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors">
-              Learn More
-            </button>
+            <Link href="/register">
+              <button className="px-8 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                Get Started
+              </button>
+            </Link>
+            <Link href="/login">
+              <button className="px-8 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                Continue
+              </button>
+            </Link>
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import { AuthResponse, StudentRecord, UserProfile } from "@/types";
 
+// This variable points to your live backend server (set in Vercel) or local server (set in .env.local).
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
 /**
@@ -7,22 +8,20 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
  * It handles adding the auth token and parsing JSON responses and errors.
  */
 async function apiFetch(url: string, token?: string, options: RequestInit = {}) {
-  // --- THIS IS THE FIX ---
-  // 1. Create a new, mutable headers object that we can safely modify.
-  // We explicitly type it as a dictionary of strings.
   const headers: { [key: string]: string } = {
     'Content-Type': 'application/json',
   };
 
-  // 2. If a token is provided, add the Authorization header to our new object.
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
-  // --- END OF FIX ---
+
+  if (!API_BASE_URL) {
+    throw new Error("NEXT_PUBLIC_API_URL is not configured. Please check your environment variables.");
+  }
 
   const response = await fetch(`${API_BASE_URL}${url}`, {
     ...options,
-    // 3. Use our fully constructed headers object, merging any additional headers from options.
     headers: { ...headers, ...options.headers },
   });
 
@@ -95,13 +94,24 @@ export const updateMyProfile = (profileData: Partial<UserProfile>, token: string
   return apiFetch('/users/me', token, { method: 'PUT', body: JSON.stringify(profileData) });
 };
 
-// --- Bonus Features (Placeholder) ---
+// --- Bonus Features (Now Fully Implemented) ---
+
+/**
+ * Calls the backend to change a specific user's role. (Admin only)
+ */
 export const changeUserRole = (userId: string, newRole: 'admin' | 'student', token: string): Promise<UserProfile> => {
-  console.warn("changeUserRole endpoint is not implemented on the backend.");
-  return apiFetch(`/users/${userId}/role`, token, { method: 'PUT', body: JSON.stringify({ role: newRole }) });
+  // --- THIS IS THE UPDATE ---
+  // This now correctly calls the real PUT /api/users/:id/role endpoint that we built.
+  // The console.warn has been removed.
+  return apiFetch(`/users/${userId}/role`, token, {
+    method: 'PUT',
+    body: JSON.stringify({ role: newRole }),
+  });
 };
 
-export const getAdminDashboardStats = async (token: string): Promise<{total: number, active: number, graduated: number}> => {
-  console.warn("getAdminDashboardStats is not implemented on the backend yet.");
-  return Promise.resolve({ total: 0, active: 0, graduated: 0 });
+/**
+ * Fetches statistics for the admin dashboard from the real backend endpoint.
+ */
+export const getAdminDashboardStats = (token: string): Promise<{total: number, active: number, graduated: number}> => {
+  return apiFetch('/students/stats', token);
 };
