@@ -1,52 +1,68 @@
 const User = require('../models/User');
-const jwt = require('jsonwebtoken');
 
-const generateToken = (user) => {
-  return jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1d' });
-};
-
-exports.register = async (req, res) => {
+/**
+ * @desc    Get the profile of the currently logged-in user
+ * @route   GET /api/users/me
+ * @access  Private
+ */
+exports.getMyProfile = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ message: 'Please provide all fields.' });
-    
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: 'An account with this email already exists.' });
-    
-    const newUser = await User.create({ name, email, password, role: 'student' }); // Explicitly set role
-    
-    const token = generateToken(newUser);
-    
-    res.status(201).json({
-      message: 'User registered successfully!',
-      token,
-      user: { id: newUser._id, name: newUser.name, email: newUser.email, role: newUser.role },
-    });
+    // The `protect` middleware has already validated the token and attached the user
+    // to the request object (`req.user`). We just need to find them again to be safe.
+    const user = await User.findById(req.user.id).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Send the user profile back as a JSON response.
+    res.status(200).json(user);
   } catch (error) {
-    console.error('REGISTRATION ERROR:', error);
-    res.status(500).json({ message: 'Server error during registration.' });
+    console.error('GET MY PROFILE ERROR:', error);
+    res.status(500).json({ message: 'Server error while fetching profile' });
   }
 };
 
-exports.login = async (req, res) => {
+/**
+ * @desc    Update the profile of the currently logged-in user
+ * @route   PUT /api/users/me
+ * @access  Private
+ */
+exports.updateMyProfile = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ message: 'Please provide email and password.' });
-    
-    const user = await User.findOne({ email }).select('+password');
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    // Find the user by the ID from the token
+    const user = await User.findById(req.user.id);
+
+    if (user) {
+      // Update the user's fields with data from the request body.
+      // If a field is not provided in the body, it keeps its old value.
+      user.name = req.body.name || user.name;
+      user.phone = req.body.phone || user.phone;
+      
+      // Only students can update these fields.
+      if (user.role === 'student') {
+        user.course = req.body.course || user.course;
+        user.enrollmentYear = req.body.enrollmentYear || user.enrollmentYear;
+      }
+      
+      // Save the updated user document to the database.
+      const updatedUser = await user.save();
+
+      // Send back the newly updated user profile.
+      res.status(200).json({
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        phone: updatedUser.phone,
+        course: updatedUser.course,
+        enrollmentYear: updatedUser.enrollmentYear,
+      });
+    } else {
+      res.status(404).json({ message: 'User not found' });
     }
-    
-    const token = generateToken(user);
-    
-    res.status(200).json({
-      message: 'Login successful',
-      token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role },
-    });
   } catch (error) {
-    console.error('LOGIN ERROR:', error);
-    res.status(500).json({ message: 'Server error during login.' });
+    console.error('UPDATE MY PROFILE ERROR:', error);
+    res.status(500).json({ message: 'Server error while updating profile' });
   }
 };
