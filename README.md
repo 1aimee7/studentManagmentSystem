@@ -2,7 +2,7 @@
 
 This is a full-stack web application built to simulate a real-world student information system. It features user authentication, role-based access control, profile management, and complete CRUD operations for student records.
 
-**Live Demo:** [Link to your deployed Vercel site]
+**Live Demo:** [(https://student-managment-system-virid.vercel.app/)]
 
 ---
 
